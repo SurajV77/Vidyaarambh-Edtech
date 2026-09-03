@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axiosClient from '../api/axiosClient';
 import TypewriterText from '../components/common/TypewriterText';
 import TiltCard from '../components/common/TiltCard';
 import CountUp from '../components/common/CountUp';
@@ -20,6 +21,61 @@ import {
 } from 'lucide-react';
 
 const Landing = () => {
+  // -------------------------------------------------------------
+  // ACADEMIC STATS CONFIGURATION:
+  // 1. DYNAMIC MODE (Default): Fetches real-time counts from your MongoDB database
+  //    (actual enrolled students, study worksheets, verified receipts).
+  // 2. MANUAL OVERRIDE MODE: Set USE_CUSTOM_STATS to true if you want to
+  //    display specific figures manually without creating database records.
+  // -------------------------------------------------------------
+  const USE_CUSTOM_STATS = false;
+  const CUSTOM_STATS = {
+    enrolledLearners: 50,       // e.g. Your real student count
+    verifiedReceiptsRate: 100,  // e.g. Receipt verification percentage
+    studyWorksheets: 45,        // e.g. Your real worksheets/tests count
+    syllabusClearedRate: 98,    // e.g. Syllabus completion rate
+  };
+
+  const [metrics, setMetrics] = useState(
+    USE_CUSTOM_STATS
+      ? CUSTOM_STATS
+      : {
+          enrolledLearners: 0,
+          verifiedReceiptsRate: 100,
+          studyWorksheets: 0,
+          syllabusClearedRate: 98,
+          isLive: false,
+        }
+  );
+
+  useEffect(() => {
+    if (USE_CUSTOM_STATS) return;
+
+    let isMounted = true;
+    const fetchLiveStats = async () => {
+      try {
+        const response = await axiosClient.get('/public/stats');
+        if (response.data?.success && isMounted) {
+          const s = response.data.stats;
+          setMetrics({
+            enrolledLearners: s.enrolledLearners ?? 0,
+            verifiedReceiptsRate: s.verifiedReceiptsRate ?? 100,
+            studyWorksheets: s.studyWorksheets ?? 0,
+            syllabusClearedRate: s.syllabusClearedRate ?? 98,
+            isLive: true,
+          });
+        }
+      } catch (err) {
+        console.warn('Live metrics sync notice:', err.message);
+      }
+    };
+
+    fetchLiveStats();
+    return () => {
+      isMounted = false;
+    };
+  }, [USE_CUSTOM_STATS]);
+
   return (
     <div className="min-h-screen bg-[#FAF8F3] text-ink-900 flex flex-col selection:bg-gold-500/20 overflow-x-hidden">
       {/* Top Academic Header */}
@@ -143,30 +199,32 @@ const Landing = () => {
 
         {/* Live Academic Metric Badges with CountUp Animation */}
         <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-3xl">
-          <div className="academic-panel p-3.5 bg-white text-center">
+          <div className="academic-panel p-3.5 bg-white text-center transition-all duration-200 hover:shadow-paper">
             <p className="text-2xl font-black text-navy-950 font-sans">
-              <CountUp end={86} duration={1200} />+
+              <CountUp end={metrics.enrolledLearners} duration={1200} />
+              {metrics.enrolledLearners > 0 ? '+' : ''}
             </p>
             <p className="text-[11.5px] text-ink-700 font-bold mt-0.5">Enrolled Learners</p>
           </div>
 
-          <div className="academic-panel p-3.5 bg-white text-center">
+          <div className="academic-panel p-3.5 bg-white text-center transition-all duration-200 hover:shadow-paper">
             <p className="text-2xl font-black text-gold-700 font-sans">
-              <CountUp end={100} duration={1400} />%
+              <CountUp end={metrics.verifiedReceiptsRate} duration={1400} />%
             </p>
             <p className="text-[11.5px] text-ink-700 font-bold mt-0.5">Verified Receipts</p>
           </div>
 
-          <div className="academic-panel p-3.5 bg-white text-center">
+          <div className="academic-panel p-3.5 bg-white text-center transition-all duration-200 hover:shadow-paper">
             <p className="text-2xl font-black text-navy-950 font-sans">
-              <CountUp end={120} duration={1500} />+
+              <CountUp end={metrics.studyWorksheets} duration={1500} />
+              {metrics.studyWorksheets > 0 ? '+' : ''}
             </p>
             <p className="text-[11.5px] text-ink-700 font-bold mt-0.5">Study Worksheets</p>
           </div>
 
-          <div className="academic-panel p-3.5 bg-white text-center">
+          <div className="academic-panel p-3.5 bg-white text-center transition-all duration-200 hover:shadow-paper">
             <p className="text-2xl font-black text-academic-green font-sans">
-              <CountUp end={98} duration={1600} />%
+              <CountUp end={metrics.syllabusClearedRate} duration={1600} />%
             </p>
             <p className="text-[11.5px] text-ink-700 font-bold mt-0.5">Syllabus Cleared</p>
           </div>
