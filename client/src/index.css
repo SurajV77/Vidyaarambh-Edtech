@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #FAF8F3;
+    color: #17202A;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Academic Headings */
+  h1, h2, h3, h4 {
+    letter-spacing: -0.015em;
+    color: #0F172A;
+  }
+}
+
+/* 3D and Micro-Motion Keyframes */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(-1deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Academic Custom Components */
+@layer components {
+  /* Paper Sheet Panel */
+  .academic-panel {
+    background-color: #FFFFFF;
+    border: 1px solid #D8D1C3;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(16, 42, 67, 0.05), 0 1px 2px rgba(16, 42, 67, 0.03);
+  }
+
+  /* Soft Sand Surface */
+  .academic-sand {
+    background-color: #F2EDE3;
+    border: 1px solid #D8D1C3;
+    border-radius: 10px;
+  }
+
+  /* Elevated Paper Sheet */
+  .academic-elevated {
+    background-color: #FFFFFF;
+    border: 1px solid #D8D1C3;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px -4px rgba(16, 42, 67, 0.08), 0 2px 6px -1px rgba(16, 42, 67, 0.04);
+  }
+
+  /* Buttons */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.15rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    background-color: #102A43;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 2px rgba(16, 42, 67, 0.12);
+  }
+  .btn-primary:hover {
+    background-color: #0B1F33;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 42, 67, 0.22);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.15rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #102A43;
+    background-color: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+  }
+  .btn-secondary:hover {
+    background-color: #F0F4F8;
+    border-color: #94A3B8;
+    color: #0B1F33;
+    transform: translateY(-1px);
+  }
+
+  .btn-gold {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.15rem;
+    font-size: 0.8125rem;
+    font-weight: 800;
+    color: #0B1F33;
+    background-color: #D99A2B;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 3px rgba(217, 154, 43, 0.25);
+  }
+  .btn-gold:hover {
+    background-color: #A16207;
+    color: #FFFFFF;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(161, 98, 7, 0.35);
+  }
+
+  /* Academic Table Head with High Contrast */
+  .academic-th {
+    padding: 0.8rem 1.25rem;
+    font-size: 0.725rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #1E293B;
+    background-color: #F4EFE6;
+    border-bottom: 1px solid #D8D1C3;
+  }
+
+  .academic-td {
+    padding: 0.95rem 1.25rem;
+    font-size: 0.8125rem;
+    color: #17202A;
+    border-bottom: 1px solid #EDE6D8;
+  }
+
+  /* Animation Utilities */
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+  .animate-float-slow {
+    animation: float-slow 6s ease-in-out infinite;
+  }
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  .animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 25s linear infinite;
+  }
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+}
+
+/* Subtle Document Sheet Texture */
+.doc-notch {
+  position: relative;
+}
+.doc-notch::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 14px 14px 0;
+  border-color: transparent #D8D1C3 transparent transparent;
+}
+
+/* Custom Refined Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF8F3;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
