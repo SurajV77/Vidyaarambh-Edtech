@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Fee = require('../models/Fee');
 const StudyMaterial = require('../models/StudyMaterial');
 const Notice = require('../models/Notice');
+const { ensureMonthlyFeesForActiveStudents } = require('../services/feeRenewalService');
 
 // @desc    Get Student Portal Dashboard Summary
 // @route   GET /api/student/dashboard
@@ -9,6 +10,10 @@ const Notice = require('../models/Notice');
 exports.getStudentDashboard = async (req, res) => {
   try {
     const studentId = req.user.id;
+
+    // Ensure current month fees are up-to-date
+    await ensureMonthlyFeesForActiveStudents();
+
     const student = await User.findById(studentId).select('-password');
 
     if (!student) {
@@ -79,6 +84,10 @@ exports.getStudentDashboard = async (req, res) => {
 exports.getMyFees = async (req, res) => {
   try {
     const studentId = req.user.id;
+
+    // Ensure current month fees are up-to-date
+    await ensureMonthlyFeesForActiveStudents();
+
     const fees = await Fee.find({ student: studentId }).sort({ createdAt: -1 });
 
     return res.status(200).json({

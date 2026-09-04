@@ -26,6 +26,7 @@ const MaterialsManagement = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [standards, setStandards] = useState([]);
 
   const [form, setForm] = useState({
     title: '',
@@ -36,6 +37,29 @@ const MaterialsManagement = () => {
     dueDate: '',
     totalMarks: '',
   });
+
+  useEffect(() => {
+    fetchStandards();
+  }, []);
+
+  const fetchStandards = async () => {
+    try {
+      const res = await axiosClient.get('/admin/standards');
+      if (res.data?.standards && res.data.standards.length > 0) {
+        setStandards(res.data.standards);
+      } else {
+        setStandards([
+          { name: 'Class 8' },
+          { name: 'Class 9' },
+          { name: 'Class 10' },
+          { name: 'Class 11' },
+          { name: 'Class 12' },
+        ]);
+      }
+    } catch (err) {
+      console.warn('Failed to load standards in materials management.');
+    }
+  };
 
   useEffect(() => {
     fetchMaterials();
@@ -194,10 +218,11 @@ const MaterialsManagement = () => {
             className="px-3 py-1.5 bg-[#FAF8F3] border border-borderWarm rounded-academic text-xs font-bold text-navy-950 focus:outline-none focus:ring-1 focus:ring-navy-900"
           >
             <option value="ALL">All Standards</option>
-            <option value="Class 9">Class 9</option>
-            <option value="Class 10">Class 10</option>
-            <option value="Class 11">Class 11</option>
-            <option value="Class 12">Class 12</option>
+            {standards.map((s) => (
+              <option key={s._id || s.name} value={s.name}>
+                {s.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -378,10 +403,11 @@ const MaterialsManagement = () => {
                     className="w-full px-3 py-1.5 bg-[#FAF8F3] border border-borderWarm rounded-academic text-xs font-bold text-navy-950 focus:bg-white focus:outline-none focus:ring-1 focus:ring-navy-900"
                   >
                     <option value="All Classes">All Standards</option>
-                    <option value="Class 9">Class 9</option>
-                    <option value="Class 10">Class 10</option>
-                    <option value="Class 11">Class 11</option>
-                    <option value="Class 12">Class 12</option>
+                    {standards.map((s) => (
+                      <option key={s._id || s.name} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

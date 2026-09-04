@@ -4,12 +4,20 @@ const path = require('path');
 require('dotenv').config();
 
 const connectDB = require('./config/db');
+const { seedDefaultStandards, initMonthlyFeeScheduler } = require('./services/feeRenewalService');
 
 // Initialize app
 const app = express();
 
-// Connect Database
-connectDB();
+// Connect Database and initialize standards & monthly dues scheduler
+connectDB().then(async () => {
+  try {
+    await seedDefaultStandards();
+    initMonthlyFeeScheduler();
+  } catch (e) {
+    console.warn('Startup initialization notice:', e.message);
+  }
+});
 
 // Middleware
 const allowedOrigins = [

@@ -38,12 +38,24 @@ const Landing = () => {
 
   const [metrics, setMetrics] = useState(
     USE_CUSTOM_STATS
-      ? CUSTOM_STATS
+      ? {
+          ...CUSTOM_STATS,
+          standardsList: [
+            { name: 'Class 8', description: 'Foundation Middle School', defaultMonthlyFee: 1800 },
+            { name: 'Class 9', description: 'Secondary Board Foundation', defaultMonthlyFee: 2000 },
+            { name: 'Class 10', description: 'Secondary Board Examination', defaultMonthlyFee: 2200 },
+            { name: 'Class 11', description: 'Higher Secondary Entrance', defaultMonthlyFee: 2500 },
+            { name: 'Class 12', description: 'Senior Board & Competitive Prep', defaultMonthlyFee: 2500 },
+          ],
+          standardsLabel: 'Class 8 - 12 Standards',
+        }
       : {
           enrolledLearners: 0,
           verifiedReceiptsRate: 100,
           studyWorksheets: 0,
           syllabusClearedRate: 98,
+          standardsList: [],
+          standardsLabel: 'Academic Standards',
           isLive: false,
         }
   );
@@ -62,6 +74,8 @@ const Landing = () => {
             verifiedReceiptsRate: s.verifiedReceiptsRate ?? 100,
             studyWorksheets: s.studyWorksheets ?? 0,
             syllabusClearedRate: s.syllabusClearedRate ?? 98,
+            standardsList: s.standardsList ?? [],
+            standardsLabel: s.standardsLabel || 'Academic Standards',
             isLive: true,
           });
         }
@@ -124,7 +138,7 @@ const Landing = () => {
             </div>
             <div className="text-left">
               <p className="text-[11px] font-extrabold text-navy-950">Academic Rigor</p>
-              <p className="text-[10.5px] text-ink-700 font-semibold">Class 9 - 12 Standards</p>
+              <p className="text-[10.5px] text-ink-700 font-semibold">{metrics.standardsLabel}</p>
             </div>
           </div>
         </div>
@@ -300,6 +314,73 @@ const Landing = () => {
               <span>Direct Student PDF Downloads</span>
             </div>
           </TiltCard>
+        </div>
+
+        {/* Dynamic Academic Standards / Classes Offered Showcase */}
+        <div className="mt-16 w-full text-left">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-4 border-b border-borderWarm mb-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-gold-500/15 text-gold-800 text-[10.5px] font-extrabold uppercase tracking-wider mb-2 border border-gold-500/30">
+                <BookOpen className="h-3 w-3" />
+                <span>Curriculum & Batches Offered</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-serif font-bold text-navy-950">
+                Academic Standards & Coaching Programs
+              </h3>
+              <p className="text-xs text-ink-700 font-medium mt-1 max-w-xl">
+                Structured curriculum programs tailored to every grade. Dynamic tuition tracking, chapter-wise worksheets, and rigorous concept mentorship.
+              </p>
+            </div>
+            <div className="text-xs font-mono font-bold text-gold-700 bg-white px-3 py-1.5 rounded-academic border border-borderWarm shadow-paper-sm self-start sm:self-auto">
+              {metrics.standardsList.length > 0
+                ? `${metrics.standardsList.length} Active Standards`
+                : 'All Standards Offered'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {(metrics.standardsList.length > 0
+              ? metrics.standardsList
+              : [
+                  { name: 'Class 8', description: 'Foundation Middle School', defaultMonthlyFee: 1800 },
+                  { name: 'Class 9', description: 'Secondary Board Foundation', defaultMonthlyFee: 2000 },
+                  { name: 'Class 10', description: 'Secondary Board Examination', defaultMonthlyFee: 2200 },
+                  { name: 'Class 11', description: 'Higher Secondary Entrance', defaultMonthlyFee: 2500 },
+                  { name: 'Class 12', description: 'Senior Board & Competitive Prep', defaultMonthlyFee: 2500 },
+                ]
+            ).map((std, idx) => (
+              <div
+                key={std._id || std.name || idx}
+                className="academic-panel p-4 bg-white hover:border-gold-500/60 transition-all duration-200 hover:shadow-paper flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="px-2.5 py-1 rounded bg-navy-950 text-white font-serif font-bold text-xs shadow-paper-sm">
+                      {std.name}
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-academic-green">
+                      ₹{Number(std.defaultMonthlyFee || 2000).toLocaleString('en-IN')}/mo
+                    </span>
+                  </div>
+
+                  <h4 className="font-serif font-bold text-sm text-navy-950 group-hover:text-gold-700 transition-colors">
+                    {std.name} Mentorship
+                  </h4>
+                  <p className="text-[11px] text-ink-700 mt-1 leading-relaxed font-medium">
+                    {std.description || 'Comprehensive Board & Entrance Preparation'}
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-borderWarm flex items-center justify-between text-[10px] font-bold text-ink-600">
+                  <span className="flex items-center gap-1 text-academic-green">
+                    <CheckCircle2 className="h-3 w-3" />
+                    <span>Admissions Open</span>
+                  </span>
+                  <span className="font-mono text-ink-500">Regular Batches</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </main>
 

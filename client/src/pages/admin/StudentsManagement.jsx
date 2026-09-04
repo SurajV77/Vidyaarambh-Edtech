@@ -15,6 +15,9 @@ import {
   X,
   IndianRupee,
   GraduationCap,
+  BookOpen,
+  Plus,
+  Layers,
 } from 'lucide-react';
 
 const StudentsManagement = () => {
@@ -23,6 +26,17 @@ const StudentsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('ALL');
   const [selectedBatch, setSelectedBatch] = useState('ALL');
+
+  // Standards / Classes state
+  const [standards, setStandards] = useState([]);
+  const [isStandardsModalOpen, setIsStandardsModalOpen] = useState(false);
+  const [newStdForm, setNewStdForm] = useState({
+    name: '',
+    description: '',
+    defaultMonthlyFee: 2000,
+  });
+  const [stdModalLoading, setStdModalLoading] = useState(false);
+  const [stdModalError, setStdModalError] = useState('');
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -46,8 +60,81 @@ const StudentsManagement = () => {
   const [formData, setFormData] = useState(initialForm);
 
   useEffect(() => {
+    fetchStandards();
+  }, []);
+
+  useEffect(() => {
     fetchStudents();
   }, [selectedClass, selectedBatch]);
+
+  const fetchStandards = async () => {
+    try {
+      const res = await axiosClient.get('/admin/standards');
+      if (res.data?.standards && res.data.standards.length > 0) {
+        setStandards(res.data.standards);
+        // Default the form standard to the first available standard
+        if (!initialForm.standardClass && res.data.standards[0]?.name) {
+          setFormData((prev) => ({
+            ...prev,
+            standardClass: res.data.standards[0].name,
+            monthlyFeeAmount: res.data.standards[0].defaultMonthlyFee || 2000,
+          }));
+        }
+      } else {
+        // Fallback default list
+        setStandards([
+          { name: 'Class 8', defaultMonthlyFee: 1800, description: 'Foundation' },
+          { name: 'Class 9', defaultMonthlyFee: 2000, description: 'Secondary' },
+          { name: 'Class 10', defaultMonthlyFee: 2200, description: 'Board Prep' },
+          { name: 'Class 11', defaultMonthlyFee: 2500, description: 'Higher Secondary' },
+          { name: 'Class 12', defaultMonthlyFee: 2500, description: 'Senior Secondary' },
+        ]);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch standards list.');
+    }
+  };
+
+  const handleCreateStandard = async (e) => {
+    e.preventDefault();
+    if (!newStdForm.name || !newStdForm.name.trim()) {
+      setStdModalError('Please enter a standard name (e.g. "Class 6" or "Class 7").');
+      return;
+    }
+
+    setStdModalLoading(true);
+    setStdModalError('');
+    try {
+      const res = await axiosClient.post('/admin/standards', newStdForm);
+      if (res.data?.success) {
+        setNewStdForm({ name: '', description: '', defaultMonthlyFee: 2000 });
+        await fetchStandards();
+      }
+    } catch (err) {
+      setStdModalError(err.response?.data?.message || 'Failed to create standard.');
+    } finally {
+      setStdModalLoading(false);
+    }
+  };
+
+  const handleDeleteStandard = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to remove standard "${name}"?`)) return;
+    try {
+      await axiosClient.delete(`/admin/standards/${id}`);
+      await fetchStandards();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete standard.');
+    }
+  };
+
+  const handleStandardChange = (val) => {
+    const matchedStd = standards.find((s) => s.name === val);
+    setFormData((prev) => ({
+      ...prev,
+      standardClass: val,
+      monthlyFeeAmount: matchedStd?.defaultMonthlyFee ? matchedStd.defaultMonthlyFee : prev.monthlyFeeAmount,
+    }));
+  };
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -74,8 +161,12 @@ const StudentsManagement = () => {
   };
 
   const handleOpenAddModal = () => {
+    const defaultStd = standards[0]?.name || 'Class 10';
+    const defaultFee = standards[0]?.defaultMonthlyFee || 2000;
     setFormData({
       ...initialForm,
+      standardClass: defaultStd,
+      monthlyFeeAmount: defaultFee,
       rollNo: `VR-${Math.floor(1000 + Math.random() * 9000)}`,
     });
     setModalError('');
@@ -164,10 +255,22 @@ const StudentsManagement = () => {
           </p>
         </div>
 
-        <button onClick={handleOpenAddModal} className="btn-primary text-xs self-start sm:self-auto">
-          <UserPlus className="h-3.5 w-3.5 text-gold-400" />
-          <span>Enroll New Student</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setIsStandardsModalOpen(true)}
+            className="btn-secondary text-xs flex items-center gap-1.5 border-navy-900/20"
+            title="Manage and add custom classes/standards"
+          >
+            <BookOpen className="h-3.5 w-3.5 text-navy-900" />
+            <span>Manage Standards ({standards.length})</span>
+          </button>
+
+          <button onClick={handleOpenAddModal} className="btn-primary text-xs">
+            <UserPlus className="h-3.5 w-3.5 text-gold-400" />
+            <span>Enroll New Student</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -190,10 +293,11 @@ const StudentsManagement = () => {
             className="px-3 py-1.5 bg-[#FAF8F3] border border-borderWarm rounded-academic text-xs font-bold text-navy-950 focus:outline-none focus:ring-1 focus:ring-navy-900"
           >
             <option value="ALL">All Standards</option>
-            <option value="Class 9">Class 9</option>
-            <option value="Class 10">Class 10</option>
-            <option value="Class 11">Class 11</option>
-            <option value="Class 12">Class 12</option>
+            {standards.map((s) => (
+              <option key={s._id || s.name} value={s.name}>
+                {s.name}
+              </option>
+            ))}
           </select>
 
           <select
@@ -408,19 +512,29 @@ const StudentsManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-extrabold text-navy-950 uppercase tracking-wider mb-1">
-                    Standard / Class
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-extrabold text-navy-950 uppercase tracking-wider">
+                      Standard / Class
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsStandardsModalOpen(true)}
+                      className="text-[10px] text-gold-700 font-bold hover:underline flex items-center gap-0.5"
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                      <span>Manage / Add Standards</span>
+                    </button>
+                  </div>
                   <select
                     value={formData.standardClass}
-                    onChange={(e) => setFormData({ ...formData, standardClass: e.target.value })}
+                    onChange={(e) => handleStandardChange(e.target.value)}
                     className="w-full px-3 py-1.5 bg-[#FAF8F3] border border-borderWarm rounded-academic text-xs font-bold text-navy-950 focus:bg-white focus:outline-none focus:ring-1 focus:ring-navy-900"
                   >
-                    <option value="Class 8">Class 8</option>
-                    <option value="Class 9">Class 9</option>
-                    <option value="Class 10">Class 10</option>
-                    <option value="Class 11">Class 11</option>
-                    <option value="Class 12">Class 12</option>
+                    {standards.map((s) => (
+                      <option key={s._id || s.name} value={s.name}>
+                        {s.name} {s.description ? `(${s.description})` : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -557,14 +671,14 @@ const StudentsManagement = () => {
                   </label>
                   <select
                     value={formData.standardClass}
-                    onChange={(e) => setFormData({ ...formData, standardClass: e.target.value })}
+                    onChange={(e) => handleStandardChange(e.target.value)}
                     className="w-full px-3 py-1.5 bg-[#FAF8F3] border border-borderWarm rounded-academic text-xs font-bold text-navy-950 focus:bg-white focus:outline-none focus:ring-1 focus:ring-navy-900"
                   >
-                    <option value="Class 8">Class 8</option>
-                    <option value="Class 9">Class 9</option>
-                    <option value="Class 10">Class 10</option>
-                    <option value="Class 11">Class 11</option>
-                    <option value="Class 12">Class 12</option>
+                    {standards.map((s) => (
+                      <option key={s._id || s.name} value={s.name}>
+                        {s.name} {s.description ? `(${s.description})` : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -663,6 +777,172 @@ const StudentsManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Manage Academic Standards Modal */}
+      {isStandardsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-navy-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="academic-panel bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-paper-lg border border-borderWarm animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-borderWarm flex items-center justify-between sticky top-0 bg-white z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-academic bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-700">
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-base text-navy-950">
+                    Academic Standards & Classes
+                  </h3>
+                  <p className="text-[11px] text-ink-700 font-medium">
+                    Add custom classes (e.g. Class 1–7, 8–12) to update student forms and the live website.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsStandardsModalOpen(false)}
+                className="text-ink-600 hover:text-navy-950 p-1"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Add New Standard Card */}
+              <div className="p-4 bg-[#FAF8F3] border border-borderWarm rounded-academic">
+                <h4 className="text-xs font-bold text-navy-950 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Plus className="h-3.5 w-3.5 text-gold-700" />
+                  <span>Add New Standard</span>
+                </h4>
+
+                {stdModalError && (
+                  <div className="p-2.5 mb-3 bg-red-50 border border-red-200 rounded text-red-700 text-xs font-medium">
+                    {stdModalError}
+                  </div>
+                )}
+
+                <form onSubmit={handleCreateStandard} className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10.5px] font-extrabold text-navy-950 uppercase tracking-wider mb-1">
+                        Standard Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Class 7"
+                        value={newStdForm.name}
+                        onChange={(e) => setNewStdForm({ ...newStdForm, name: e.target.value })}
+                        className="w-full px-3 py-1.5 bg-white border border-borderWarm rounded-academic text-xs font-bold text-navy-950 focus:outline-none focus:ring-1 focus:ring-navy-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-extrabold text-navy-950 uppercase tracking-wider mb-1">
+                        Curriculum Focus
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Middle School"
+                        value={newStdForm.description}
+                        onChange={(e) =>
+                          setNewStdForm({ ...newStdForm, description: e.target.value })
+                        }
+                        className="w-full px-3 py-1.5 bg-white border border-borderWarm rounded-academic text-xs font-semibold text-navy-950 focus:outline-none focus:ring-1 focus:ring-navy-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-extrabold text-navy-950 uppercase tracking-wider mb-1">
+                        Default Monthly Fee (₹)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="50"
+                        value={newStdForm.defaultMonthlyFee}
+                        onChange={(e) =>
+                          setNewStdForm({ ...newStdForm, defaultMonthlyFee: e.target.value })
+                        }
+                        className="w-full px-3 py-1.5 bg-white border border-borderWarm rounded-academic text-xs font-bold text-navy-950 focus:outline-none focus:ring-1 focus:ring-navy-900 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      disabled={stdModalLoading}
+                      className="btn-primary text-xs py-1.5 px-4"
+                    >
+                      {stdModalLoading && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                      <span>Create Standard</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Standards List Table */}
+              <div>
+                <h4 className="text-xs font-bold text-navy-950 uppercase tracking-wider mb-2">
+                  Active Standards in System ({standards.length})
+                </h4>
+
+                <div className="border border-borderWarm rounded-academic overflow-hidden bg-white">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-[#FAF8F3] border-b border-borderWarm font-mono text-[10.5px] uppercase tracking-wider text-ink-700">
+                        <th className="px-3.5 py-2.5 font-bold">Standard</th>
+                        <th className="px-3.5 py-2.5 font-bold">Description</th>
+                        <th className="px-3.5 py-2.5 font-bold">Default Tuition</th>
+                        <th className="px-3.5 py-2.5 font-bold text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-borderWarm">
+                      {standards.map((std) => (
+                        <tr key={std._id || std.name} className="hover:bg-sand-50/50">
+                          <td className="px-3.5 py-2.5 font-bold text-navy-950">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-extrabold bg-navy-50 text-navy-950 border border-navy-200">
+                              {std.name}
+                            </span>
+                          </td>
+                          <td className="px-3.5 py-2.5 text-ink-700 font-medium">
+                            {std.description || 'General Coaching'}
+                          </td>
+                          <td className="px-3.5 py-2.5 font-mono font-bold text-navy-950">
+                            ₹{Number(std.defaultMonthlyFee || 2000).toLocaleString('en-IN')}
+                          </td>
+                          <td className="px-3.5 py-2.5 text-right">
+                            {std._id ? (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStandard(std._id, std.name)}
+                                className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                                title={`Delete ${std.name}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-ink-500 italic">Default</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-borderWarm flex justify-end bg-[#FAF8F3]">
+              <button
+                type="button"
+                onClick={() => setIsStandardsModalOpen(false)}
+                className="btn-primary text-xs"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -11,12 +11,18 @@ import {
   IndianRupee,
   Receipt,
   FileCheck2,
+  RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 
 const FeesManagement = () => {
   const [fees, setFees] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Auto-renew / sync state
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
   // Filters
   const [selectedMonth, setSelectedMonth] = useState('ALL');
@@ -79,6 +85,30 @@ const FeesManagement = () => {
       }
     } catch (err) {
       // ignore
+    }
+  };
+
+  const handleAutoRenewFees = async () => {
+    setSyncLoading(true);
+    setSyncMessage('');
+    try {
+      const res = await axiosClient.post('/admin/fees/generate-monthly', {
+        month: selectedMonth !== 'ALL' ? selectedMonth : undefined,
+        year: selectedYear,
+      });
+      if (res.data?.success) {
+        const { createdCount, totalActive } = res.data.result || {};
+        setSyncMessage(
+          createdCount > 0
+            ? `Successfully auto-renewed monthly tuition dues for ${createdCount} active student(s) for ${selectedMonth !== 'ALL' ? selectedMonth : 'current month'}!`
+            : `All ${totalActive || ''} active students already have up-to-date fee records for this period.`
+        );
+        fetchFees();
+      }
+    } catch (err) {
+      setSyncMessage(err.response?.data?.message || 'Failed to auto-renew monthly tuition dues.');
+    } finally {
+      setSyncLoading(false);
     }
   };
 
@@ -166,11 +196,41 @@ const FeesManagement = () => {
           </p>
         </div>
 
-        <button onClick={() => handleOpenPayModal()} className="btn-primary text-xs self-start sm:self-auto">
-          <Receipt className="h-3.5 w-3.5 text-gold-400" />
-          <span>Record Tuition Collection</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handleAutoRenewFees}
+            disabled={syncLoading}
+            className="btn-secondary text-xs flex items-center gap-1.5 border-academic-green/40 hover:bg-academic-greenBg/30 text-navy-950 font-bold"
+            title="Auto-generate or renew monthly tuition fees for all active students"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-academic-green ${syncLoading ? 'animate-spin' : ''}`} />
+            <span>{syncLoading ? 'Syncing Dues...' : 'Auto-Renew / Sync Month'}</span>
+          </button>
+
+          <button onClick={() => handleOpenPayModal()} className="btn-primary text-xs">
+            <Receipt className="h-3.5 w-3.5 text-gold-400" />
+            <span>Record Tuition Collection</span>
+          </button>
+        </div>
       </div>
+
+      {/* Auto-Renewal Status Alert Banner */}
+      {syncMessage && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-academic flex items-center justify-between gap-3 text-xs font-semibold text-emerald-950 animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+            <span>{syncMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSyncMessage('')}
+            className="text-emerald-700 hover:text-emerald-950 text-xs font-bold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Ledger Summary Panels */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

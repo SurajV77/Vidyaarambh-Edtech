@@ -2,12 +2,17 @@ const User = require('../models/User');
 const Fee = require('../models/Fee');
 const StudyMaterial = require('../models/StudyMaterial');
 const Notice = require('../models/Notice');
+const Standard = require('../models/Standard');
+const { ensureMonthlyFeesForActiveStudents } = require('../services/feeRenewalService');
 
 // @desc    Get Admin Dashboard Stats & Revenue Chart Data
 // @route   GET /api/admin/dashboard-stats
 // @access  Private/Admin
 exports.getDashboardStats = async (req, res) => {
   try {
+    // Ensure monthly fees exist for all active students for the current month
+    await ensureMonthlyFeesForActiveStudents();
+
     const totalStudents = await User.countDocuments({ role: 'student' });
     const activeStudents = await User.countDocuments({ role: 'student', isActive: true });
     const totalMaterials = await StudyMaterial.countDocuments();
@@ -312,6 +317,12 @@ exports.deleteStudent = async (req, res) => {
 exports.getFeeRecords = async (req, res) => {
   try {
     const { month, year, status, studentId } = req.query;
+
+    // Automatically ensure active students have a fee record for the queried month/year
+    const targetMonth = month && month !== 'ALL' ? month : new Date().toLocaleString('default', { month: 'long' });
+    const targetYear = year ? Number(year) : new Date().getFullYear();
+    await ensureMonthlyFeesForActiveStudents(targetMonth, targetYear);
+
     const query = {};
 
     if (month && month !== 'ALL') query.month = month;
@@ -428,3 +439,184 @@ exports.recordFeePayment = async (req, res) => {
     });
   }
 };
+
+// @desc    Manually Trigger or Sync Monthly Tuition Dues for a given month & year
+// @route   POST /api/admin/fees/generate-monthly
+// @access  Private/Admin
+exports.generateMonthlyFees = async (req, res) => {
+  try {
+    const { month, year } = req.body;
+    const targetMonth = month || new Date().toLocaleString('default', { month: 'long' });
+    const targetYear = Number(year) || new Date().getFullYear();
+
+    const result = await ensureMonthlyFeesForActiveStudents(targetMonth, targetYear);
+
+    return res.status(200).json({
+      success: true,
+      message: `Tuition fee renewal processed for ${targetMonth} ${targetYear}.`,
+      result,
+    });
+  } catch (error) {
+    console.error('generateMonthlyFees error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process monthly fee renewal.',
+    });
+  }
+};
+
+// @desc    Get all academic standards / classes
+// @route   GET /api/admin/standards
+// @access  Private/Admin
+exports.getStandards = async (req, res) => {
+  try {
+    const standards = await Standard.find().sort({ order: 1, createdAt: 1 });
+    return res.status(200).json({
+      success: true,
+      count: standards.length,
+      standards,
+    });
+  } catch (error) {
+    console.error('getStandards error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve standards.',
+    });
+  }
+};
+
+// @desc    Create a new academic standard manually
+// @route   POST /api/admin/standards
+// @access  Private/Admin
+exports.createStandard = async (req, res) => {
+  try {
+    const { name, description, defaultMonthlyFee, order } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Standard name is required (e.g. "Class 6", "Class 7").',
+      });
+    }
+
+    const cleanName = name.trim();
+    const existing = await Standard.findOne({
+      name: { $regex: new RegExp(`^${cleanName}$`, 'i') },
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: `Standard "${cleanName}" already exists.`,
+      });
+    }
+
+    let standardOrder = order !== undefined && order !== null && order !== '' ? Number(order) : 0;
+    if (!standardOrder) {
+      const match = cleanName.match(/\d+/);
+      standardOrder = match ? parseInt(match[0], 10) : 50;
+    }
+
+    const newStandard = new Standard({
+      name: cleanName,
+      order: standardOrder,
+      description: description ? description.trim() : '',
+      defaultMonthlyFee: defaultMonthlyFee ? Number(defaultMonthlyFee) : 2000,
+      isActive: true,
+    });
+
+    await newStandard.save();
+
+    return res.status(201).json({
+      success: true,
+      message: `Standard "${cleanName}" created successfully.`,
+      standard: newStandard,
+    });
+  } catch (error) {
+    console.error('createStandard error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create standard.',
+    });
+  }
+};
+
+// @desc    Update an academic standard
+// @route   PUT /api/admin/standards/:id
+// @access  Private/Admin
+exports.updateStandard = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, defaultMonthlyFee, order, isActive } = req.body;
+
+    const standard = await Standard.findById(id);
+    if (!standard) {
+      return res.status(404).json({
+        success: false,
+        message: 'Standard not found.',
+      });
+    }
+
+    if (name && name.trim()) standard.name = name.trim();
+    if (description !== undefined) standard.description = description.trim();
+    if (defaultMonthlyFee !== undefined) standard.defaultMonthlyFee = Number(defaultMonthlyFee);
+    if (order !== undefined) standard.order = Number(order);
+    if (isActive !== undefined) standard.isActive = Boolean(isActive);
+
+    await standard.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Standard updated successfully.',
+      standard,
+    });
+  } catch (error) {
+    console.error('updateStandard error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update standard.',
+    });
+  }
+};
+
+// @desc    Delete an academic standard
+// @route   DELETE /api/admin/standards/:id
+// @access  Private/Admin
+exports.deleteStandard = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const standard = await Standard.findById(id);
+    if (!standard) {
+      return res.status(404).json({
+        success: false,
+        message: 'Standard not found.',
+      });
+    }
+
+    // Check if any student currently belongs to this standard
+    const enrolledCount = await User.countDocuments({
+      role: 'student',
+      standardClass: standard.name,
+    });
+
+    if (enrolledCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete "${standard.name}" because ${enrolledCount} active student(s) are currently enrolled in it. Reassign those students or deactivate the standard instead.`,
+      });
+    }
+
+    await Standard.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: `Standard "${standard.name}" removed successfully.`,
+    });
+  } catch (error) {
+    console.error('deleteStandard error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete standard.',
+    });
+  }
+};
+
